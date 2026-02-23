@@ -1,0 +1,23 @@
+{
+  "name": "com.lgc.action-animator-builder-ma",
+  "displayName": "LGC Action 层动画器批量构建（MA 版）",
+  "version": "1.0.0",
+  "unity": "2022.3",
+  "description": "批量构建VRChat Action层Animator控制器，并生成Modular Avatar预制件与子菜单",
+  "author": {
+    "name": "LgcChina",
+    "url": "https://github.com/LgcChina"
+  },
+  "vpmDependencies": {
+    "nadena.dev.modular-avatar": ">=1.10.0",
+    "com.vrchat.avatars": "3.x.x"
+  },
+  "keywords": [ "VRChat", "Action", "Modular Avatar", "工具", "Unity" ],
+  "samples": [
+    {
+      "displayName": "示例场景与预设",
+      "description": "未包含示例场景与预设",
+      "path": "Samples~/QuickStart"
+    }
+  ]
+}
