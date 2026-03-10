@@ -21,7 +21,8 @@ public class ActionAnimatorBuilderMA : EditorWindow
     private int startIndex = 1;             // 动画编号起始值
 
     // 统一过渡选项
-    private bool transitionsUseExitTime = true;
+    // 修改点1：默认取消勾选退出时间复选框
+    private bool transitionsUseExitTime = false;
     private float transitionsExitTime = 0f;
     private bool transitionsFixedDuration = true;
     private float transitionsDuration = 0f;
@@ -34,10 +35,12 @@ public class ActionAnimatorBuilderMA : EditorWindow
     private int lastStartIndex = 1;
     private string lastGeneratedFolderPath = "";
 
-    [MenuItem("LGC/批量动作动画器构建MA菜单")]
+    // 修改点2：调整菜单入口名称
+    [MenuItem("LGC/LGC Action 层动画器批量构建（MA 版）")]
     public static void OpenWindow()
     {
-        var win = GetWindow<ActionAnimatorBuilderMA>("批量动作动画器构建MA菜单");
+        // 窗口显示名称保持修改后的名称
+        var win = GetWindow<ActionAnimatorBuilderMA>("LGC Action 层动画器批量构建（MA 版）");
         win.minSize = new Vector2(740, 580);
     }
 
@@ -45,28 +48,31 @@ public class ActionAnimatorBuilderMA : EditorWindow
 
     private void OnGUI()
     {
-        EditorGUILayout.LabelField("批量生成 Animator 与 MA 子菜单", EditorStyles.boldLabel);
+        // 修改点3：调整标题文字
+        EditorGUILayout.LabelField("LGC Action 层动画器批量构建（MA 版）", EditorStyles.boldLabel);
+        EditorGUILayout.Space();
 
-        // 基本设置
-        EditorGUILayout.BeginVertical("box");
-        controllerName = EditorGUILayout.TextField("文件名", controllerName);
-        parameterName = EditorGUILayout.TextField("参数名（int）", parameterName);
-        startIndex = EditorGUILayout.IntField("起始编号", startIndex);
-        EditorGUILayout.EndVertical();
+        // ========== 整体布局：左右两栏 ==========
+        EditorGUILayout.BeginHorizontal();
 
-        // 过渡设置
-        EditorGUILayout.BeginVertical("box");
-        EditorGUILayout.LabelField("过渡选项", EditorStyles.boldLabel);
-        transitionsUseExitTime = EditorGUILayout.Toggle("启用退出时间", transitionsUseExitTime);
-        transitionsExitTime = Mathf.Clamp01(EditorGUILayout.FloatField("退出时间 (0..1)", transitionsExitTime));
-        transitionsFixedDuration = EditorGUILayout.Toggle("固定时长", transitionsFixedDuration);
-        transitionsDuration = Mathf.Max(0f, EditorGUILayout.FloatField("过渡时长 (秒)", transitionsDuration));
-        EditorGUILayout.EndVertical();
+        // ========== 左区域1：导入文件相关 ==========
+        EditorGUILayout.BeginVertical(GUILayout.Width(350));
+        EditorGUILayout.LabelField("动画片段导入", EditorStyles.boldLabel);
 
-        // 拖拽区域与列表
+        // 拖拽区域
         DrawDragArea();
-        EditorGUILayout.LabelField($"动画片段：{clips.Count} 个");
-        using (var view = new EditorGUILayout.ScrollViewScope(scroll, GUILayout.Height(180)))
+        EditorGUILayout.Space();
+
+        // 清空和排序按钮
+        EditorGUILayout.BeginHorizontal();
+        if (GUILayout.Button("清空")) clips.Clear();
+        if (GUILayout.Button("按名称排序")) clips = clips.Where(c => c != null).OrderBy(c => c.name).ToList();
+        EditorGUILayout.EndHorizontal();
+        EditorGUILayout.Space();
+
+        // 动画片段列表
+        EditorGUILayout.LabelField($"已导入：{clips.Count} 个");
+        using (var view = new EditorGUILayout.ScrollViewScope(scroll, GUILayout.Height(400)))
         {
             scroll = view.scrollPosition;
             for (int i = 0; i < clips.Count; i++)
@@ -81,35 +87,57 @@ public class ActionAnimatorBuilderMA : EditorWindow
                 EditorGUILayout.EndHorizontal();
             }
         }
-        EditorGUILayout.BeginHorizontal();
-        if (GUILayout.Button("清空")) clips.Clear();
-        if (GUILayout.Button("按名称排序")) clips = clips.Where(c => c != null).OrderBy(c => c.name).ToList();
-        EditorGUILayout.EndHorizontal();
+        EditorGUILayout.EndVertical();
+
+        // ========== 右区域2：参数设置与操作按钮 ==========
+        EditorGUILayout.BeginVertical();
+        // 基本设置
+        EditorGUILayout.BeginVertical("box");
+        controllerName = EditorGUILayout.TextField("文件名", controllerName);
+        parameterName = EditorGUILayout.TextField("参数名（int）", parameterName);
+        startIndex = EditorGUILayout.IntField("起始编号", startIndex);
+        EditorGUILayout.EndVertical();
         EditorGUILayout.Space();
 
-        // 1) 创建控制器
-        GUI.enabled = clips.Any(c => c != null);
-        if (GUILayout.Button("创建控制器", GUILayout.Height(34))) CreateController();
-        GUI.enabled = true;
+        // 过渡设置
+        EditorGUILayout.BeginVertical("box");
+        EditorGUILayout.LabelField("过渡选项", EditorStyles.boldLabel);
+        transitionsUseExitTime = EditorGUILayout.Toggle("启用退出时间", transitionsUseExitTime);
+        transitionsExitTime = Mathf.Clamp01(EditorGUILayout.FloatField("退出时间 (0..1)", transitionsExitTime));
+        transitionsFixedDuration = EditorGUILayout.Toggle("固定时长", transitionsFixedDuration);
+        transitionsDuration = Mathf.Max(0f, EditorGUILayout.FloatField("过渡时长 (秒)", transitionsDuration));
+        EditorGUILayout.EndVertical();
+        EditorGUILayout.Space();
 
-        // 2) 创建 MA 预制件及开关（父级 SubMenu + Children；子项 Toggle）
+        // 操作按钮
+        GUI.enabled = clips.Any(c => c != null);
+        if (GUILayout.Button("1.创建控制器", GUILayout.Height(34))) CreateController();
+        GUI.enabled = true;
+        EditorGUILayout.Space();
+
         bool canCreateMA = (lastController != null && lastClipCount > 0 && !string.IsNullOrEmpty(parameterName));
         GUI.enabled = canCreateMA;
-        if (GUILayout.Button("创建 MA 预制件及开关", GUILayout.Height(38)))
+        if (GUILayout.Button("2.创建 MA 预制件及开关", GUILayout.Height(38)))
         {
             CreateMAPrefabWithSubMenu();
         }
         GUI.enabled = true;
+        EditorGUILayout.Space();
 
-        // 3) 定位到基础文件夹
         if (GUILayout.Button("定位到生成的动画器文件夹", GUILayout.Height(30)))
         {
             EnsureFolder(BaseFolder);
             EditorGUIUtility.PingObject(AssetDatabase.LoadAssetAtPath<UnityEngine.Object>(BaseFolder));
             Selection.activeObject = AssetDatabase.LoadAssetAtPath<UnityEngine.Object>(BaseFolder);
         }
+        EditorGUILayout.Space();
 
+        // 状态提示
         EditorGUILayout.HelpBox(string.IsNullOrEmpty(statusMessage) ? "准备就绪。" : statusMessage, MessageType.Info);
+        EditorGUILayout.EndVertical();
+
+        // 结束水平布局
+        EditorGUILayout.EndHorizontal();
     }
 
     private void DrawDragArea()
@@ -217,10 +245,13 @@ public class ActionAnimatorBuilderMA : EditorWindow
             ConfigureTransition(t);
             t.AddCondition(AnimatorConditionMode.NotEqual, value, parameterName);
         }
+
         var exitT = empty2.AddExitTransition();
         ConfigureTransition(exitT);
+        // 修复BUG - 为Exit过渡添加参数不等于0的条件
+        exitT.AddCondition(AnimatorConditionMode.NotEqual, 0, parameterName);
 
-        // 可选：在门控/退出前状态上附加 VRC 行为（保持你之前的逻辑）
+        // 可选：在门控/退出前状态上附加 VRC 行为
         string info1a, info1b, info2a, info2b;
         TryAddVRCTrackingControl(empty1, allSetToAnimation: true, out info1a);
         TryAddVRCPlayableLayerControl(empty1, playableName: "Action", layerIndex: 0,
@@ -274,7 +305,7 @@ public class ActionAnimatorBuilderMA : EditorWindow
     }
 
     // =========================
-    // 2) 创建 MA 预制件（父级 SubMenu / Children，子级 Toggle）
+    // 创建 MA 预制件（父级 SubMenu / Children，子级 Toggle）
     // =========================
     private void CreateMAPrefabWithSubMenu()
     {
@@ -291,7 +322,7 @@ public class ActionAnimatorBuilderMA : EditorWindow
         // 根对象
         var rootGO = new GameObject("动作包MA");
 
-        // —— 合并 Animator 到 Action 层（使用绝对路径模式，动画层合并优先级设置为9） ——
+        // 合并 Animator 到 Action 层（使用绝对路径模式，动画层合并优先级设置为9）
         var merge = rootGO.AddComponent<ModularAvatarMergeAnimator>();
         merge.animator = lastController;
         merge.layerType = VRCAvatarDescriptor.AnimLayerType.Action;
@@ -315,7 +346,7 @@ public class ActionAnimatorBuilderMA : EditorWindow
             priorityField.SetValue(merge, 9);
         }
 
-        // —— 父级子菜单（SubMenu / Children）并安装到 Avatar ——
+        // 父级子菜单（SubMenu / Children）并安装到 Avatar
         var menuRoot = new GameObject("动作菜单");
         menuRoot.transform.SetParent(rootGO.transform, false);
 
@@ -325,7 +356,7 @@ public class ActionAnimatorBuilderMA : EditorWindow
         parentItem.MenuSource = SubmenuSource.Children;                           // 子菜单来源：Children
         menuRoot.AddComponent<ModularAvatarMenuInstaller>();                        // 绑定安装器
 
-        // —— Parameters：声明 Int 参数（Saved× / Synced√ 由 MA 处理） ——
+        // Parameters：声明 Int 参数（Saved× / Synced√ 由 MA 处理）
         var mp = menuRoot.AddComponent<ModularAvatarParameters>();
         var pc = new ParameterConfig
         {
@@ -335,7 +366,7 @@ public class ActionAnimatorBuilderMA : EditorWindow
         };
         mp.parameters.Add(pc);
 
-        // —— 子项：为每个动画创建 Toggle（参数=pose；值按数量递增） ——
+        // 子项：为每个动画创建 Toggle（参数=pose；值按数量递增）
         for (int i = 0; i < lastClipCount; i++)
         {
             int value = lastStartIndex + i;
