@@ -1,7 +1,7 @@
 {
   "name": "com.lgc.action-animator-builder-ma",
   "displayName": "LGC Action 层动画器批量构建（MA 版）",
-  "version": "1.0.0",
+  "version": "1.1.0",
   "unity": "2022.3",
   "description": "批量构建VRChat Action层Animator控制器，并生成Modular Avatar预制件与子菜单",
   "author": {
